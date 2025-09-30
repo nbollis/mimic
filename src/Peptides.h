@@ -27,9 +27,9 @@ using namespace std;
 class Peptides
 {
   public:
-    Peptides(unsigned int minLen, set<string> usedPeptides, AminoAcidDist background, std::mt19937 rGen, unsigned int maxTries = 1000, bool replaceI=false);
-    Peptides(unsigned int minLen, set<string> usedPeptides, std::mt19937 rGen, unsigned int maxTries = 1000, bool replaceI=false);
-    Peptides();
+      Peptides(unsigned int minLen, set<string> usedPeptides, AminoAcidDist background, std::mt19937 rGen, unsigned int maxTries = 1000, bool replaceI = false, unsigned int retainTermini = 0);
+      Peptides(unsigned int minLen, set<string> usedPeptides, std::mt19937 rGen, unsigned int maxTries = 1000, bool replaceI = false, unsigned int retainTermini = 0);
+      Peptides();
     
     bool parseOptions(int argc, char **argv);
     int run();
@@ -75,6 +75,8 @@ class Peptides
     bool isVerbose_ = false;
     bool noDigest_ = false;
 	bool retainAccession_ = false;
+    unsigned int retainTermini_ = 0;
+
 };
 
 #endif /*PEPTIDES_H_*/

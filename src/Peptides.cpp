@@ -52,11 +52,11 @@ std::vector<size_t> getIdxs(const string& sequence){
     return idxs;
 }
 
-Peptides::Peptides(unsigned int minLength, set<string> usedPeptides, AminoAcidDist background, std::mt19937 rGen, unsigned int maxTries, bool replaceI) :
+Peptides::Peptides(unsigned int minLength, set<string> usedPeptides, AminoAcidDist background, std::mt19937 rGen, unsigned int maxTries, bool replaceI, unsigned int retainTermini) :
         maxTries_{maxTries}, usedPeptides_{std::move(usedPeptides)}, minLen_(minLength), replaceI_(replaceI), seed_(1u),
         multFactor_(1u), sharedPeptideRatio_(0.0),
         proteinNamePrefix_("mimic|Random_"), prependOriginal_(false),
-        background_{std::move(background)}, inferAAFrequency_{false}, rGen_{rGen} {}
+        background_{std::move(background)}, inferAAFrequency_{false}, rGen_{rGen}, retainTermini_{ retainTermini } {}
 
 void Peptides::printAll(const vector<string>& connectorStrings,
     const std::string& suffix, std::ostream& os) {
@@ -193,9 +193,17 @@ void Peptides::readFasta(string& path, bool write, std::ostream& os) {
 }
 
 void Peptides::shuffle(const string& in,string& out) {
-  out=in;
-  std::shuffle(out.begin(), out.end(), rGen_);
+  if (retainTermini_ == 0 || in.length() <= 2 * retainTermini_) {
+      out = in;
+      std::shuffle(out.begin(), out.end(), rGen_);
+  } else {
+    out = in;
+    auto start = out.begin() + retainTermini_;
+    auto end = out.end() - retainTermini_;
+    std::shuffle(start, end, rGen_);
+  }
 }
+
 void Peptides::mutate(const string& in, string& out) {
   out=in;
     std::vector<size_t> okIds;
@@ -288,7 +296,8 @@ int Peptides::run() {
   readFasta(inFile_, prependOriginal_, outStream);
   background_.print(cerr);
   for (unsigned int m = 0; m < multFactor_; ++m) {
-    Peptides entrapmentDB(minLen_, usedPeptides_, background_, rGen_, maxTries_, replaceI_);
+    Peptides entrapmentDB(minLen_, usedPeptides_, background_, rGen_, maxTries_, replaceI_, retainTermini_);
+
 
     cerr << "Shuffling round: " << (m+1) << endl;
     entrapmentDB.shuffle(pep2ixs_, logger);
@@ -356,6 +365,10 @@ bool Peptides::parseOptions(int argc, char **argv){
         "Retain the original accession in the mimic output. \n Not set >mimic|Random_1|shuffle_1 \n If set >mimic|Random_P84243_1|shuffle_1",
         "",
         TRUE_IF_SET);
+    cmd.defineOption("T",
+        "retain-termini",
+        "Number of N- and C-terminal residues to retain during scrambling (NoDigest only)",
+        "int");
 
   cmd.parseArgs(argc, argv);
 
@@ -390,6 +403,9 @@ bool Peptides::parseOptions(int argc, char **argv){
   if (cmd.optionSet("A")) {
       retainAccession_ = true;
   }
+  if (cmd.optionSet("T")) {
+      retainTermini_ = cmd.getInt("T", 0, 100);
+  }
 
   if (!cmd.arguments.empty()) {
     inFile_ = cmd.arguments[0];
@@ -400,8 +416,8 @@ bool Peptides::parseOptions(int argc, char **argv){
   return true;
 }
 
-Peptides::Peptides(unsigned int minLen, set<string> usedPeptides, std::mt19937 rGen, unsigned int maxTries, bool replaceI):
-Peptides(minLen, std::move(usedPeptides), AminoAcidDist{replaceI}, rGen, maxTries, replaceI) {
+Peptides::Peptides(unsigned int minLen, set<string> usedPeptides, std::mt19937 rGen, unsigned int maxTries, bool replaceI, unsigned int retainTermini):
+Peptides(minLen, std::move(usedPeptides), AminoAcidDist{replaceI}, rGen, maxTries, replaceI, retainTermini) {
 
 }
 
